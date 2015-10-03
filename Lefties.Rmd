@@ -20,8 +20,8 @@ teams<-tbl_df(Teams)
 #select lefthandedness from master table
 master<-select(master,playerID,throws)
 #filter data for post war era
-pitching<-filter(pitching,yearID>1945 & yearID<1980)
-teams<-filter(teams,yearID>1945 & yearID<1980)
+pitching<-filter(pitching,yearID>1945)
+teams<-filter(teams,yearID>1945)
 #merge in handedness with pitching data
 pitching<-merge(pitching,master,by="playerID")
 #generate summary statistics for teams: number of innings pitched by lefties 
