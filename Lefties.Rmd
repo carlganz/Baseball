@@ -1,0 +1,74 @@
+---
+title: "Does Left Handed Pitching Matter"
+author: "Carl Ganz"
+date: "September 26, 2015"
+output: pdf_document
+---
+
+I want to explore whether more left handed pitching is better. Let's manipulate `Lahman's` baseball data before we do any modeling.
+
+```{r warning=F}
+#load packages
+library(Lahman)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+#load datasets as datatables
+pitching<-tbl_df(Pitching)
+master<-tbl_df(Master)
+teams<-tbl_df(Teams)
+#select lefthandedness from master table
+master<-select(master,playerID,throws)
+#filter data for post war era
+pitching<-filter(pitching,yearID>1945 & yearID<1980)
+teams<-filter(teams,yearID>1945 & yearID<1980)
+#merge in handedness with pitching data
+pitching<-merge(pitching,master,by="playerID")
+#generate summary statistics for teams: number of innings pitched by lefties 
+#and number of games started by lefties for each team each year
+leftyip<-pitching %>% group_by(yearID,teamID) %>% 
+  filter(throws=="L") %>% summarise(leftyips=sum(IPouts),leftystarts=sum(GS))
+#merge summary statistics in with team statistics
+teams<-merge(teams,leftyip,by=c("yearID","teamID"))
+#calculate percentage of innings pitched by lefties
+teams$leftypercent<-100*teams$leftyips/teams$IPouts                              
+
+```
+
+Now lets use linear regressions to model how lefthandness correlates with winning.
+
+```{r}
+lm1<-lm(W~leftypercent,teams)
+summary(lm1)
+
+ggplot(teams,aes(x=leftypercent,y=W)) + geom_point(shape=2,alpha=1/2) + geom_smooth(method=lm)
+```
+
+We get a statistically significant positive correlation (each additional percent of innings thrown by left hander is associated with an extra $0.09$ wins per season), but as the graph and the $R^2$ both indicate the proportion of innings pitched by lefties isn't a good predictor of team performance.
+
+Let's look at the number of games started by lefties instead.
+
+```{r warning=F}
+lm2<-lm(W~leftystarts,teams)
+summary(lm2)
+
+ggplot(teams,aes(x=leftystarts,y=W)) + geom_point(shape=2,alpha=1/2) + geom_smooth(method=lm)
+```
+
+We get similar results. Each additional start by a lefty is associated with an additional $0.06$ wins per season.
+
+Let's instead model ERA instead of wins
+
+```{r warning=F}
+lm3<-lm(ERA~leftypercent,teams)
+summary(lm3)
+
+ggplot(teams,aes(x=leftypercent,y=ERA)) + geom_point(shape=2,alpha=1/2) + geom_smooth(method=lm)
+
+lm4<-lm(ERA~leftystarts,teams)
+summary(lm4)
+
+ggplot(teams,aes(x=leftystarts,y=ERA)) + geom_point(shape=2,alpha=1/2) + geom_smooth(method=lm)
+```
+
+Each additional percent of innings pitched by a lefty is associated with $0.006$ decline in ERA over the season. Each additional start by a lefty is associated with $0.002$ decline in ERA.
